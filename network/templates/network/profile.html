@@ -1,0 +1,124 @@
+{% extends "network/layout.html" %}
+
+{% block body %}
+    <script>
+        function getCookie(name){
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`)
+        if (parts.length==2) return parts.pop().split(';').shift();
+        }
+
+        function submitChanges(id){
+        const textarea = document.getElementById(`textarea_${id}`).value
+        const content = document.getElementById(`content_${id}`)
+        const modal = document.getElementById(`edit_${id}`)
+        fetch (`/edit/${id}`,{
+            method: "POST",
+            headers: {"Content-type": "application/json", "X-CSRFtoken": getCookie("csrftoken")},
+            body: JSON.stringify({
+            content: textarea
+            })
+        }) 
+        .then(response => response.json())
+        .then(result => {
+            content.innerHTML = result.data
+            // on every modal change state like in hidden modal
+            modal.classList.remove('show');
+            modal.setAttribute('aria-hidden', 'true');
+            modal.setAttribute('style', 'display: none');
+            // get modal backdrops
+            const modalsBackdrops = document.getElementsByClassName('modal-backdrop');
+            // remove every modal backdrop
+            for(let i=0; i<modalsBackdrops.length; i++) {
+                document.body.removeChild(modalsBackdrops[i]);
+            }
+            })
+        }
+
+        function likeHandler(id,liked){
+        const el = document.getElementById(`${id}`)
+        el.classList.remove("btn-danger")
+        el.classList.remove("btn-outline-dark")
+        const numLikesEl = document.getElementById(`num-likes-${id}`)
+        if(liked.indexOf(id) >= 0){
+            var l = true
+        } else {
+            var l = false
+        }
+        if (l === true){
+            fetch (`/unlike/${id}`)
+            .then (response => response.json())
+            .then (result => {
+            el.classList.add("btn-outline-dark")
+            numLikesEl.textContent = result.num_likes
+            l = !l
+        })
+        } else {
+        fetch (`/like/${id}`)
+        .then (response => response.json())
+        .then (result => {
+            el.classList.add("btn-danger")
+            numLikesEl.textContent = result.num_likes
+            l = !l
+        })
+        }
+        }
+    </script>
+    <div class="card text-center">
+        <div class="card-header">
+            @{{ user_profile }}
+        </div>
+        <div class="card-body">
+          <h5 class="card-title">Followers: {{ followers.count }}</h5>
+          <h5 class="card-title">Following: {{ following.count }}</h5>
+        {% if user.is_authenticated %}
+                {% if user != user_profile %}
+                    {% if isFollowing %}
+                        <form action="{% url 'unfollow' %}" method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="followuser" value="{{ user_profile }}" />
+                            <input type="submit" class="btn btn-outline-danger" value="Unfollow" />
+                        </form>  
+                    {% else %}
+                        <form action="{% url 'follow' %}" method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="followuser" value="{{ user_profile }}" />
+                            <input type="submit" class="btn btn-danger" value="Follow" />
+                        </form>  
+                    {% endif %}  
+            {% endif %}  
+        {% endif %}
+        </div>
+    <div class="allPosts">
+        {% for post in items %}
+        <div class="card">
+            <h5 class="card-header"><a href="{% url 'profile' user_id=post.user.id %}">@{{ post.user }}</a></h5>
+            <div class="card-body">
+              <h5 class="card-title">{{ post.content }}</h5>
+              <p style="color:gray" class="card-text">{{ post.date }}</p>
+            {% if user != post.user %}
+            {% if post.id in liked %} 
+            <button class="btn btn-danger fa fa-thumbs-up col-1" id="{{ post.id }}" onclick="likeHandler({{ post.id }}, {{ liked }})"></button>                 
+            {% else %}
+            <button class="btn btn-outline-dark fa fa-thumbs-up col-1" id="{{ post.id }}" onclick="likeHandler({{ post.id }}, {{ liked }})"></button>                 
+            {% endif %}
+            {% endif %}
+            <div class="likes-count">
+                <p id="num-likes-{{ post.id }}">{{ post.liked.count }}</p>
+                <p>likes</p>
+              </div>
+            </div>
+            </div>
+        {% endfor %}
+    </div>
+    <nav aria-label="Page navigation example">
+        <ul class="pagination d-flex justify-content-center mt-3">
+            {% if items.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ items.previous_page_number }}">Previous</a></li>
+            {% endif %}
+            {% if items.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ items.next_page_number }}">Next</a></li>
+            {% endif %}
+        </ul>
+      </nav>
+{% endblock %}

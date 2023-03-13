@@ -1,0 +1,14 @@
+.newPost {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.likes-count p {
+  display: inline;
+}
+
+.likes-count p:not(:last-child)::after {
+  content: ' ';
+}
